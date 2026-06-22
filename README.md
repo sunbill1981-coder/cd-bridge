@@ -13,6 +13,8 @@ Claude Desktop 的第三方推理（Gateway）模式会校验模型名，只认 
 
 `cd-bridge` 在中间层代理请求：用官方模型名通过校验，实际路由到你要用的模型。
 
+> **注意**：本项目仅适用于 **Claude Desktop** 的第三方推理（Gateway）模式，不适用于 **Claude Code CLI**。Claude Code 的 API 调用方式不同，无法通过此代理路由。
+
 ## 工作原理
 
 | 接口 | 行为 |
