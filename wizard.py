@@ -15,6 +15,14 @@ import tty
 import termios
 from pathlib import Path
 import urllib.request
+import urllib.error
+import ssl
+
+try:
+    import certifi
+    _SSL_CTX = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    _SSL_CTX = ssl.create_default_context()
 
 SH_PATH = Path(__file__).resolve().parent / "cd-bridge.sh"
 INSTALL_DIR = Path.home() / ".cd-bridge"
@@ -675,9 +683,15 @@ class Wizard:
                 try:
                     r = urllib.request.Request(f"{base.rstrip('/')}/models",
                                                headers={"Authorization": f"Bearer {key}"})
-                    data = json.loads(urllib.request.urlopen(r, timeout=5).read())
+                    data = json.loads(urllib.request.urlopen(r, timeout=5, context=_SSL_CTX).read())
                     for m in data.get("data", []):
                         print(f"    {CYN('☁️')}  {name}/{m['id']}")
+                except urllib.error.URLError as ex:
+                    msg = str(ex.reason) if hasattr(ex, 'reason') else str(ex)
+                    if 'CERTIFICATE_VERIFY_FAILED' in msg:
+                        print(f"    {D('(SSL证书验证失败，请运行: pip3 install certifi)')}")
+                    else:
+                        print(f"    {D('(获取失败)')}  {D(msg)}")
                 except Exception as ex:
                     print(f"    {D('(获取失败)')}  {D(str(ex))}")
                 print()
@@ -731,11 +745,15 @@ class Wizard:
                 try:
                     r = urllib.request.Request(f"{base.rstrip('/')}/models",
                                                headers={"Authorization": f"Bearer {key}"})
-                    data = json.loads(urllib.request.urlopen(r, timeout=5).read()).get("data", [])
+                    data = json.loads(urllib.request.urlopen(r, timeout=5, context=_SSL_CTX).read()).get("data", [])
                     if data:
                         all_models.append(("header", f"云端模型 ({pname})", ""))
                         for m in data:
                             all_models.append(("cloud", f"☁️  {pname}/{m['id']}", f"{pname}/{m['id']}"))
+                except urllib.error.URLError as ex:
+                    msg = str(ex.reason) if hasattr(ex, 'reason') else str(ex)
+                    if 'CERTIFICATE_VERIFY_FAILED' in msg:
+                        all_models.append(("note", D("(SSL证书验证失败，请运行: pip3 install certifi)"), ""))
                 except:
                     pass
 

@@ -124,7 +124,12 @@ for m in data:
   if [ "$(python3 -c "import json; print(len(json.loads('$provs')))" 2>/dev/null || echo 0)" -gt 0 ]; then
     echo
     python3 -c "
-import json, urllib.request
+import json, urllib.request, urllib.error, ssl
+try:
+    import certifi
+    ctx = ssl.create_default_context(cafile=certifi.where())
+except ImportError:
+    ctx = ssl.create_default_context()
 provs = json.loads('$provs')
 for p in provs:
     name = p.get('name','?')
@@ -137,10 +142,16 @@ for p in provs:
         continue
     try:
         req = urllib.request.Request(f\"{base.rstrip('/')}/models\", headers={'Authorization': f'Bearer {key}'})
-        data = json.loads(urllib.request.urlopen(req, timeout=5).read()).get('data', [])
+        data = json.loads(urllib.request.urlopen(req, timeout=5, context=ctx).read()).get('data', [])
         for m in data:
             mid = m['id']
             print(f'  {name}/{mid}')
+    except urllib.error.URLError as e:
+        msg = str(e.reason) if hasattr(e, 'reason') else str(e)
+        if 'CERTIFICATE_VERIFY_FAILED' in msg:
+            print(f'  (SSL证书验证失败，请运行: pip3 install certifi)')
+        else:
+            print(f'  (获取失败: {msg})')
     except Exception as e:
         print(f'  (获取失败: {e})')
     print()
